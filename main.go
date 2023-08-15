@@ -105,7 +105,8 @@ func main() {
 	http.HandleFunc("/ws", wsEndpoint)
 	fmt.Println("Listening on port " + port)
 	http.Handle("/", http.FileServer(http.Dir("./web")))
-	http.ListenAndServe(":"+port, nil)
+	err := http.ListenAndServeTLS(":"+port, "certs/blah.crt.", "certs/decrypted.key", nil)
+	fmt.Println(err)
 }
 
 type Contact struct {
