@@ -18,14 +18,38 @@ var upgrader = websocket.Upgrader{
 
 var connectedClients = make(map[*websocket.Conn]bool)
 
+func home(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "web/relay.html")
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprintf(w, `<html>`)
+}
+
 func relay(w http.ResponseWriter, r *http.Request) {
 	body := make(map[string]interface{})
+	r.ParseMultipartForm(10 << 20)
 	err := json.NewDecoder(r.Body).Decode(&body)
+	var b []byte
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		contact := make(map[string]string)
+		for k, v := range r.Form {
+			contact[k] = v[0]
+		}
+		b, err = json.Marshal(contact)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		b, err = json.Marshal(body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
-	b, err := json.Marshal(body)
+	headers, _ := json.Marshal(r.Header)
+
+	cont := Contact{Header: string(headers), Body: string(b)}
+	b, err = json.Marshal(cont)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -35,6 +59,7 @@ func relay(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			client.Close()
 			delete(connectedClients, client)
+			fmt.Println("Client Disconnected")
 		}
 	}
 	fmt.Fprintf(w, "OK\n")
@@ -42,13 +67,13 @@ func relay(w http.ResponseWriter, r *http.Request) {
 
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 	}
 
 	log.Println("Client Connected")
+
 	err = ws.WriteMessage(1, []byte("Hi Client!"))
 	if err != nil {
 		log.Println(err)
@@ -75,8 +100,15 @@ func reader(conn *websocket.Conn) {
 
 func main() {
 
+	http.HandleFunc("/home", home)
 	http.HandleFunc("/relay", relay)
 	http.HandleFunc("/ws", wsEndpoint)
 	fmt.Println("Listening on port " + port)
+	http.Handle("/", http.FileServer(http.Dir("./web")))
 	http.ListenAndServe(":"+port, nil)
+}
+
+type Contact struct {
+	Header string `json:"header"`
+	Body   string `json:"body"`
 }
