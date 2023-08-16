@@ -105,7 +105,7 @@ func main() {
 	http.HandleFunc("/ws", wsEndpoint)
 	fmt.Println("Listening on port " + port)
 	http.Handle("/", http.FileServer(http.Dir("./web")))
-	err := http.ListenAndServeTLS(":"+port, "certs/blah.crt.", "certs/decrypted.key", nil)
+	err := http.ListenAndServe(":"+port, nil)
 	fmt.Println(err)
 }
 

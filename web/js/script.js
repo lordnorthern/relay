@@ -1,4 +1,4 @@
-let socket = new WebSocket("wss://elkz.net:7717/ws")
+let socket = new WebSocket("wss://r.elkz.net/ws")
 socket.onopen = () => {
 	logMessage("Successfully Connected");
 };
